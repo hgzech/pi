@@ -131,6 +131,12 @@ main{padding:0 14px 220px}
 .glossrow{flex-basis:100%;font-size:13.5px;color:var(--dim);line-height:1.4;
   padding:0 11px 10px;margin-top:-4px}
 .gwrap{display:flex;flex-wrap:wrap;max-width:100%}
+.crossnote{flex-basis:100%;font-family:var(--mono);font-size:10px;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--faint);
+  margin:14px 0 3px;display:flex;align-items:center;gap:9px}
+.crossnote::after{content:"";flex:1;height:1px;background:var(--line)}
+.chip.cross{opacity:.68;border-style:dashed}
+.chip.cross:hover{opacity:1}
 .more{width:100%;margin-top:9px;background:var(--panel);border:1px solid var(--line);
   border-radius:6px;color:var(--dim);padding:11px;font-family:var(--mono);
   font-size:12px;letter-spacing:.1em;text-transform:uppercase;min-height:44px}
@@ -549,6 +555,28 @@ async function renderPickers(){
       mb.textContent = "Show " + (matched.length - shown.length) + " more";
       mb.onclick = () => { expand[role] = true; renderPickers(); };
       host.appendChild(mb);
+    }
+    // once expanded, also offer the same bucket's other column — the
+    // active/passive split is a judgement call and often worth overriding
+    if(expand[role]){
+      const other = role === "a" ? data.passive : data.active;
+      const mine = new Set(list.map(e => e.w.toLowerCase()));
+      let cross = other.filter(e => !mine.has(e.w.toLowerCase()));
+      if(filt) cross = cross.filter(e =>
+        e.w.toLowerCase().includes(filt) || (e.g||"").toLowerCase().includes(filt));
+      if(cross.length){
+        const lab = document.createElement("div");
+        lab.className = "crossnote";
+        lab.textContent = code + " tagged " + (role === "a" ? "passive" : "active");
+        host.appendChild(lab);
+        const cf = document.createDocumentFragment();
+        for(const e of cross){
+          const el = chipEl(e, role, code, used, sel);
+          el.querySelector(".chip").classList.add("cross");
+          cf.appendChild(el);
+        }
+        host.appendChild(cf);
+      }
     }
   }
 }
