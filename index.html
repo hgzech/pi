@@ -81,21 +81,26 @@ main{padding:0 14px 220px}
 .psound{font-family:var(--mono);font-size:12px;color:var(--dim);letter-spacing:.04em}
 
 /* ---------- scene line ---------- */
-.scene{font-family:var(--disp);font-size:19px;line-height:1.75;
-  padding:14px;background:var(--panel2);border-radius:7px;
+.scene{font-family:var(--disp);font-size:19px;line-height:2.1;
+  padding:11px 9px;background:var(--panel2);border-radius:7px;
   border:1px solid var(--line);margin:10px 0 4px;min-height:62px}
-.slot{color:var(--faint);font-style:italic;outline:none;padding:0 2px;
-  border-bottom:1px dotted transparent}
-.slot.set{font-style:normal;border-bottom-color:rgba(138,148,162,.45)}
-.slot:focus{border-bottom:1px solid var(--gold)}
-.slot.blank::before{content:attr(data-ph);color:var(--faint);font-style:italic}
+/* Every field needs a real box. min-width does nothing on display:inline,
+   which is what made empty fields untappable on iOS. */
+.ed,.slot{display:inline-block;vertical-align:middle;outline:none;
+  max-width:100%;min-width:4.5ch;min-height:34px;padding:5px 9px;margin:2px 1px;
+  border-radius:5px;background:rgba(255,255,255,.05);
+  border:1px solid transparent;line-height:22px;
+  -webkit-user-select:text;user-select:text;cursor:text}
+.ed{color:var(--bone)}
+.ed:focus,.slot:focus{border-color:var(--gold);background:rgba(227,195,107,.10)}
+.ed.blank::before,.slot.blank::before{content:attr(data-ph);
+  color:var(--faint);font-style:italic}
+.slot{font-style:italic;color:var(--faint)}
+.slot.set{font-style:normal}
+.slot.a{background:rgba(95,185,160,.11)}
+.slot.p{background:rgba(159,179,200,.11)}
 .slot.a.set{color:var(--bronze)}
 .slot.p.set{color:var(--marble)}
-.ed{display:inline;outline:none;color:var(--bone);
-  border-bottom:1px dashed var(--faint);padding:0 3px;min-width:1.5ch;
-  -webkit-user-modify:read-write-plaintext-only}
-.ed:focus{border-bottom-color:var(--gold);border-bottom-style:solid}
-.ed.blank::before{content:attr(data-ph);color:var(--faint);font-style:italic}
 
 /* ---------- picker ---------- */
 .sect{margin-top:20px}
@@ -221,10 +226,10 @@ main{padding:0 14px 220px}
 
   <div class="scene">
     <span class="ed" id="edPre" contenteditable="true" data-ph="where&hairsp;…" role="textbox" aria-label="Locus"></span>
-    <span class="slot a" id="slotA" contenteditable="true" data-ph="active peg" role="textbox" aria-label="Active peg"></span>
+    <span class="slot a" id="slotA" contenteditable="true" data-ph="active peg" role="textbox" aria-label="Active peg" spellcheck="false" autocorrect="off" autocapitalize="off"></span>
     <span class="ed" id="edMid" contenteditable="true" data-ph="does what&hairsp;…" role="textbox" aria-label="Action"></span>
-    <span class="slot p" id="slotP" contenteditable="true" data-ph="passive peg" role="textbox" aria-label="Passive peg"></span>
-    <span class="ed" id="edPost" contenteditable="true" data-ph="&hairsp;…" role="textbox" aria-label="Ending"></span>
+    <span class="slot p" id="slotP" contenteditable="true" data-ph="passive peg" role="textbox" aria-label="Passive peg" spellcheck="false" autocorrect="off" autocapitalize="off"></span>
+    <span class="ed" id="edPost" contenteditable="true" data-ph="then&hairsp;…" role="textbox" aria-label="Ending"></span>
   </div>
 
   <section class="sect a" id="sectA">
@@ -692,7 +697,9 @@ for(const id of ["edPre","edMid","edPost","slotA","slotP"]){
     const t = (ev.clipboardData || window.clipboardData).getData("text").replace(/\s+/g," ");
     document.execCommand("insertText", false, t);
   });
-  el.addEventListener("keydown", ev => { if(ev.key === "Enter") ev.preventDefault(); });
+  el.addEventListener("keydown", ev => {
+    if(ev.key === "Enter"){ ev.preventDefault(); el.blur(); }
+  });
 }
 document.getElementById("btnLog").onclick = () => { renderLog(); document.getElementById("logSheet").classList.remove("hide"); };
 document.getElementById("closeLog").onclick = closeSheets;
