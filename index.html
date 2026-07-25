@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Pi Pegs">
+<meta name="theme-color" content="#0E1116">
+<title>Pi Pegs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0E1116; --panel:#161B22; --panel2:#1C222B; --line:#2A323D;
+  --bone:#E9E5DA; --dim:#8A94A2; --faint:#5C6675;
+  --bronze:#5FB9A0;        /* active — the doer */
+  --marble:#9FB3C8;        /* passive — the acted-upon */
+  --gold:#E3C36B;          /* current position */
+  --warn:#D98A7B;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,sans-serif;
+  --disp:"Fraunces",Georgia,serif;
+  --safeb:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%}
+body{
+  background:var(--ink); color:var(--bone); font-family:var(--sans);
+  font-size:16px; line-height:1.45; overscroll-behavior-y:none;
+  padding-top:env(safe-area-inset-top,0px);
+}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+.hide{display:none !important}
+
+/* ---------- header ---------- */
+header{
+  position:sticky;top:0;z-index:20;background:rgba(14,17,22,.94);
+  backdrop-filter:blur(12px);border-bottom:1px solid var(--line);
+  padding:calc(env(safe-area-inset-top,0px) + 10px) 14px 0;
+}
+.hrow{display:flex;align-items:baseline;gap:10px}
+.mark{font-family:var(--disp);font-size:26px;line-height:1;color:var(--gold)}
+.stagelab{font-family:var(--mono);font-size:12px;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--faint)}
+.stagenum{font-family:var(--mono);font-size:12px;color:var(--bone)}
+.hspace{flex:1}
+.iconbtn{font-family:var(--mono);font-size:11px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--dim);padding:8px 6px;min-height:36px}
+.iconbtn:hover,.iconbtn:focus-visible{color:var(--bone)}
+
+/* ---------- ribbon ---------- */
+.ribbon{display:flex;gap:5px;overflow-x:auto;padding:10px 0 11px;
+  scrollbar-width:none;scroll-behavior:smooth}
+.ribbon::-webkit-scrollbar{display:none}
+.quad{flex:0 0 auto;font-family:var(--mono);font-size:12.5px;letter-spacing:.06em;
+  padding:5px 7px;border-radius:3px;color:var(--faint);
+  border:1px solid transparent;white-space:nowrap;min-height:32px}
+.quad.done{color:var(--dim);background:var(--panel2)}
+.quad.done::after{content:"";display:block;height:2px;margin-top:3px;
+  background:linear-gradient(90deg,var(--bronze) 50%,var(--marble) 50%);opacity:.65}
+.quad.now{color:var(--ink);background:var(--gold);font-weight:600;
+  border-color:var(--gold)}
+.quad:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+/* ---------- stage card ---------- */
+main{padding:0 14px 220px}
+.pairs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0 6px}
+.pair{background:var(--panel);border:1px solid var(--line);border-radius:7px;
+  padding:12px 12px 10px;position:relative;overflow:hidden}
+.pair::before{content:"";position:absolute;inset:0 auto 0 0;width:3px}
+.pair.a::before{background:var(--bronze)}
+.pair.p::before{background:var(--marble)}
+.prole{font-family:var(--mono);font-size:10px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--faint)}
+.pair.a .prole{color:var(--bronze)}
+.pair.p .prole{color:var(--marble)}
+.pdig{font-family:var(--mono);font-size:38px;font-weight:500;line-height:1.05;
+  letter-spacing:.04em;margin:2px 0 1px}
+.psound{font-family:var(--mono);font-size:12px;color:var(--dim);letter-spacing:.04em}
+
+/* ---------- scene line ---------- */
+.scene{font-family:var(--disp);font-size:19px;line-height:1.75;
+  padding:14px;background:var(--panel2);border-radius:7px;
+  border:1px solid var(--line);margin:10px 0 4px;min-height:62px}
+.slot{color:var(--faint);font-style:italic;outline:none;padding:0 2px;
+  border-bottom:1px dotted transparent}
+.slot.set{font-style:normal;border-bottom-color:rgba(138,148,162,.45)}
+.slot:focus{border-bottom:1px solid var(--gold)}
+.slot.blank::before{content:attr(data-ph);color:var(--faint);font-style:italic}
+.slot.a.set{color:var(--bronze)}
+.slot.p.set{color:var(--marble)}
+.ed{display:inline;outline:none;color:var(--bone);
+  border-bottom:1px dashed var(--faint);padding:0 3px;min-width:1.5ch;
+  -webkit-user-modify:read-write-plaintext-only}
+.ed:focus{border-bottom-color:var(--gold);border-bottom-style:solid}
+.ed.blank::before{content:attr(data-ph);color:var(--faint);font-style:italic}
+
+/* ---------- picker ---------- */
+.sect{margin-top:20px}
+.shead{display:flex;align-items:center;gap:9px;margin-bottom:9px}
+.stitle{font-family:var(--mono);font-size:11px;letter-spacing:.16em;
+  text-transform:uppercase}
+.sect.a .stitle{color:var(--bronze)}
+.sect.p .stitle{color:var(--marble)}
+.scount{font-family:var(--mono);font-size:11px;color:var(--faint)}
+.filter{width:100%;background:var(--panel);border:1px solid var(--line);
+  border-radius:6px;color:var(--bone);padding:9px 11px;font-size:15px;
+  margin-bottom:10px;min-height:42px}
+.filter::placeholder{color:var(--faint)}
+.filter:focus{outline:none;border-color:var(--dim)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;background:var(--panel);
+  border:1px solid var(--line);border-radius:6px;padding:0 4px 0 11px;
+  min-height:42px;max-width:100%}
+.chip .w{padding:9px 0;font-size:15.5px;text-align:left;flex:1;min-width:0}
+.sect.a .chip.on{border-color:var(--bronze);background:rgba(95,185,160,.13)}
+.sect.p .chip.on{border-color:var(--marble);background:rgba(159,179,200,.13)}
+.chip .deg{color:var(--gold);font-size:11px;vertical-align:super}
+.chip .used{font-family:var(--mono);font-size:9.5px;color:var(--warn);
+  letter-spacing:.06em;white-space:nowrap}
+.mini{font-family:var(--mono);font-size:12px;color:var(--faint);
+  padding:0 6px;min-width:28px;min-height:42px;line-height:42px}
+.mini:hover,.mini:focus-visible{color:var(--bone)}
+.glossrow{flex-basis:100%;font-size:13.5px;color:var(--dim);line-height:1.4;
+  padding:0 11px 10px;margin-top:-4px}
+.gwrap{display:flex;flex-wrap:wrap;max-width:100%}
+.more{width:100%;margin-top:9px;background:var(--panel);border:1px solid var(--line);
+  border-radius:6px;color:var(--dim);padding:11px;font-family:var(--mono);
+  font-size:12px;letter-spacing:.1em;text-transform:uppercase;min-height:44px}
+.more:hover,.more:focus-visible{color:var(--bone);border-color:var(--dim)}
+.empty{color:var(--faint);font-size:14px;padding:14px 0;line-height:1.55}
+.empty code{font-family:var(--mono);font-size:12.5px;color:var(--dim)}
+.manual{width:100%;background:var(--panel);border:1px solid var(--line);
+  border-radius:6px;color:var(--bone);padding:10px 11px;font-size:15px;min-height:42px}
+
+/* ---------- commit bar ---------- */
+.bar{position:fixed;left:0;right:0;bottom:0;z-index:25;background:rgba(14,17,22,.96);
+  backdrop-filter:blur(12px);border-top:1px solid var(--line);
+  padding:10px 14px calc(10px + var(--safeb))}
+.barrow{display:flex;gap:8px;align-items:stretch}
+.lock{flex:1;background:var(--gold);color:var(--ink);font-weight:600;
+  border-radius:6px;padding:13px;font-size:16px;letter-spacing:.01em}
+.lock[disabled]{background:var(--panel2);color:var(--faint);cursor:default}
+.nav{background:var(--panel);border:1px solid var(--line);border-radius:6px;
+  padding:13px 15px;color:var(--dim);font-family:var(--mono);font-size:15px}
+.nav:hover,.nav:focus-visible{color:var(--bone)}
+
+/* ---------- overlays ---------- */
+.sheet{position:fixed;inset:0;z-index:40;background:var(--ink);
+  overflow-y:auto;padding:calc(env(safe-area-inset-top,0px) + 16px) 14px
+  calc(24px + var(--safeb));-webkit-overflow-scrolling:touch}
+.sheethead{display:flex;align-items:center;margin-bottom:16px;gap:10px}
+.sheettitle{font-family:var(--disp);font-size:24px;flex:1}
+.logrow{display:grid;grid-template-columns:auto 1fr;gap:12px;
+  padding:12px 0;border-bottom:1px solid var(--line);align-items:start}
+.logdig{font-family:var(--mono);font-size:15px;color:var(--gold);
+  letter-spacing:.06em;padding-top:1px}
+.logwords{font-family:var(--disp);font-size:17px;line-height:1.35}
+.logwords .wa{color:var(--bronze)}
+.logwords .wp{color:var(--marble)}
+.lognote{font-size:13.5px;color:var(--dim);margin-top:3px;line-height:1.4}
+.logmeta{font-family:var(--mono);font-size:10.5px;color:var(--faint);margin-top:4px}
+.logjump{font-family:var(--mono);font-size:10.5px;color:var(--faint);
+  letter-spacing:.1em;text-transform:uppercase;padding:4px 0;min-height:30px}
+.logjump:hover{color:var(--bone)}
+.helpsec{margin-bottom:22px}
+.helpsec h3{font-family:var(--mono);font-size:11px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--faint);font-weight:500;margin:0 0 8px}
+.helpsec p{margin:0 0 9px;font-size:14.5px;color:var(--dim);line-height:1.55}
+.table{font-family:var(--mono);font-size:13.5px;display:grid;
+  grid-template-columns:repeat(2,1fr);gap:5px 18px;color:var(--bone)}
+.table span i{color:var(--faint);font-style:normal}
+.act{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.act button{background:var(--panel);border:1px solid var(--line);border-radius:6px;
+  padding:11px 14px;font-size:14px;color:var(--dim);min-height:44px}
+.act button:hover,.act button:focus-visible{color:var(--bone);border-color:var(--dim)}
+.act button.danger:hover{color:var(--warn);border-color:var(--warn)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(94px + var(--safeb));
+  background:var(--bone);color:var(--ink);font-size:14px;font-weight:500;
+  padding:9px 16px;border-radius:20px;z-index:60;opacity:0;pointer-events:none;
+  transition:opacity .22s}
+.toast.show{opacity:1}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none !important;scroll-behavior:auto !important}}
+@media (min-width:680px){
+  main,header{max-width:660px;margin-left:auto;margin-right:auto}
+  .bar>*{max-width:660px;margin-left:auto;margin-right:auto}
+  .pdig{font-size:46px}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <span class="mark">π</span>
+    <span class="stagelab">stage</span>
+    <span class="stagenum" id="stagenum">1</span>
+    <span class="hspace"></span>
+    <button class="iconbtn" id="btnLog">Log</button>
+    <button class="iconbtn" id="btnHelp">Key</button>
+  </div>
+  <div class="ribbon" id="ribbon"></div>
+</header>
+
+<main>
+  <div class="pairs">
+    <div class="pair a">
+      <div class="prole">Active</div>
+      <div class="pdig" id="digA">14</div>
+      <div class="psound" id="sndA">t/d · r</div>
+    </div>
+    <div class="pair p">
+      <div class="prole">Passive</div>
+      <div class="pdig" id="digP">15</div>
+      <div class="psound" id="sndP">t/d · l</div>
+    </div>
+  </div>
+
+  <div class="scene">
+    <span class="ed" id="edPre" contenteditable="true" data-ph="where&hairsp;…" role="textbox" aria-label="Locus"></span>
+    <span class="slot a" id="slotA" contenteditable="true" data-ph="active peg" role="textbox" aria-label="Active peg"></span>
+    <span class="ed" id="edMid" contenteditable="true" data-ph="does what&hairsp;…" role="textbox" aria-label="Action"></span>
+    <span class="slot p" id="slotP" contenteditable="true" data-ph="passive peg" role="textbox" aria-label="Passive peg"></span>
+    <span class="ed" id="edPost" contenteditable="true" data-ph="&hairsp;…" role="textbox" aria-label="Ending"></span>
+  </div>
+
+  <section class="sect a" id="sectA">
+    <div class="shead"><span class="stitle">Active</span><span class="scount" id="cntA"></span></div>
+    <input class="filter" id="filtA" placeholder="Filter active pegs" autocomplete="off" autocapitalize="off">
+    <div class="chips" id="chipsA"></div>
+  </section>
+
+  <section class="sect p" id="sectP">
+    <div class="shead"><span class="stitle">Passive</span><span class="scount" id="cntP"></span></div>
+    <input class="filter" id="filtP" placeholder="Filter passive pegs" autocomplete="off" autocapitalize="off">
+    <div class="chips" id="chipsP"></div>
+  </section>
+</main>
+
+<div class="bar">
+  <div class="barrow">
+    <button class="nav" id="btnPrev" aria-label="Previous stage">←</button>
+    <button class="lock" id="btnLock" disabled>Lock in</button>
+    <button class="nav" id="btnNext" aria-label="Next stage">→</button>
+  </div>
+</div>
+
+<div class="sheet hide" id="logSheet">
+  <div class="sheethead">
+    <span class="sheettitle">Log</span>
+    <button class="iconbtn" id="closeLog">Close</button>
+  </div>
+  <div id="logBody"></div>
+  <div class="act" style="margin-top:20px">
+    <button id="btnExport">Export JSON</button>
+    <button id="btnImport">Import JSON</button>
+    <button id="btnReset" class="danger">Erase everything</button>
+  </div>
+  <input type="file" id="fileIn" accept=".json,application/json" class="hide">
+</div>
+
+<div class="sheet hide" id="helpSheet">
+  <div class="sheethead">
+    <span class="sheettitle">Key</span>
+    <button class="iconbtn" id="closeHelp">Close</button>
+  </div>
+  <div class="helpsec">
+    <h3>Digits</h3>
+    <div class="table" id="keyTable"></div>
+  </div>
+  <div class="helpsec">
+    <h3>Blank</h3>
+    <p>th, w, h, y and every vowel carry no digit. A word with one digit-bearing
+       consonant doubles it: Athena 22, Ivy 88, Owl 55, Earth 44.</p>
+  </div>
+  <div class="helpsec">
+    <h3>How a stage works</h3>
+    <p>Each stage is four digits. The first pair names an active peg, the second
+       a passive one, and you picture the first doing something to the second in
+       the next spot of your palace. Write the locus and the action straight
+       into the sentence — "On my bed in Leiden, a turtle looks through a
+       telescope" — then lock it in and the position advances. The two pegs in
+       the sentence are editable too, so you can reword one or write your own;
+       anything you type is kept as a chip for that bucket from then on.</p>
+  </div>
+  <div class="helpsec">
+    <h3>Chips</h3>
+    <p>Tap a word to choose it, <span style="font-family:var(--mono)">?</span>
+       to see what it is. A red mark lists the stages where you already used
+       that word. Anything you pick rises to the top of that bucket next time
+       the same number comes round, so your favourites settle out on their own.
+       Long buckets show the first 40; filtering searches all of them.</p>
+  </div>
+  <div class="helpsec">
+    <h3>Peg lists</h3>
+    <p>The app reads <code style="font-family:var(--mono)">pegs/00.md</code> through
+       <code style="font-family:var(--mono)">pegs/99.md</code> next to this page.
+       Buckets you haven't generated yet fall back to a text field, so you can
+       still work. Served over <code style="font-family:var(--mono)">file://</code>
+       the browser blocks those reads — use a local server or GitHub Pages.</p>
+  </div>
+  <div class="helpsec">
+    <h3>Storage</h3>
+    <p>Everything lives in this browser only. Export now and then, especially
+       before clearing site data or switching phones.</p>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const PI = "141592653589793238462643383279502884197169399375105820974944592307816406286208998628034825342117067982148086513282306647093844609550582231725359408128481117450284102701938521105559644622948954930381964428810975665933446128475648233786783165271201909145648566923460348610454326648213393607260249141273724587006606315588174881520920962829254091715364367892590360011330530548820466521384146951941511609433057270365759591953092186117381932611793105118548074462379962749567351885752724891227938183011949129833673362440656643086021394946395224737190702179860943702770539217176293176752384674818467669405132000568127145263560827785771342757789609173637178721468440901224953430146549585371050792279689258923542019956112129021960864034418159813629774771309960518707211349999998372978049951059731732816096318595024459455346908302642522308253344685035261931188171010003137838752886587533208381420617177669147303598253490428755468731159562863882353787593751957781857780532171226806613001927876611195909216420199";
+const SOUND = ["s/z","t/d","n","m","r","l","ch/sh/j","k/g","f/v","p/b"];
+const KEY = "pipegs.v1";
+const STAGES = Math.floor(PI.length/4);
+
+let S = load();
+let cache = {};            // "17" -> {active:[],passive:[]} | null if absent
+let openGloss = {};        // per-render gloss reveal
+let expand = {a:false, p:false};
+const SHOW_N = 40;
+
+function load(){
+  try{
+    const raw = localStorage.getItem(KEY);
+    if(raw){
+      const o = JSON.parse(raw);
+      return {pos:o.pos||0, rec:o.rec||{}};
+    }
+  }catch(e){}
+  return {pos:0, rec:{}};
+}
+function save(){
+  try{ localStorage.setItem(KEY, JSON.stringify(S)); }
+  catch(e){ toast("Storage is full or blocked"); }
+}
+function quad(i){ return PI.slice(i*4, i*4+4); }
+function codes(i){ const q=quad(i); return [q.slice(0,2), q.slice(2)]; }
+function sounds(c){ return SOUND[+c[0]] + " · " + SOUND[+c[1]]; }
+
+/* ---------- peg files ---------- */
+function splitEntries(s){
+  const out=[]; let d=0, cur="";
+  for(const ch of s){
+    if(ch==="(") d++;
+    else if(ch===")") d--;
+    if(ch==="," && d<=0){ out.push(cur); cur=""; } else cur+=ch;
+  }
+  out.push(cur);
+  return out.map(x=>x.trim()).filter(Boolean);
+}
+function parseEntry(raw){
+  let s = raw.trim();
+  const spec = s.indexOf("°") >= 0;
+  s = s.replace(/°/g,"").trim();
+  let gloss = null;
+  const m = s.match(/^(.+?)\s*\(([^]*)\)$/);
+  if(m && m[1].trim()){ s = m[1].trim(); gloss = m[2].trim(); }
+  s = s.replace(/^\*+|\*+$/g,"").trim();
+  return s ? {w:s, g:gloss, sp:spec} : null;
+}
+function parseMd(txt){
+  const out = {active:[], passive:[]};
+  const seen = {active:new Set(), passive:new Set()};
+  for(const line of txt.split(/\r?\n/)){
+    const m = line.match(/^\s*\*\*(Active|Passive)\s*:?\*\*\s*:?\s*(.*)$/i);
+    if(!m) continue;
+    const k = m[1].toLowerCase();
+    for(const raw of splitEntries(m[2])){
+      const e = parseEntry(raw);
+      if(!e) continue;
+      const key = e.w.toLowerCase();
+      if(seen[k].has(key)) continue;
+      seen[k].add(key); out[k].push(e);
+    }
+  }
+  return out;
+}
+async function getBucket(code){
+  if(code in cache) return cache[code];
+  try{
+    const r = await fetch("pegs/"+code+".md", {cache:"no-store"});
+    if(!r.ok) throw 0;
+    const t = await r.text();
+    const p = parseMd(t);
+    cache[code] = (p.active.length || p.passive.length) ? p : null;
+  }catch(e){ cache[code] = null; }
+  return cache[code];
+}
+
+/* ---------- indexes ---------- */
+// word -> most recent stage it was picked in, keyed by bucket and role
+function pickedMap(){
+  const m = {};
+  for(const k in S.rec){
+    const r = S.rec[k]; const [c1,c2] = codes(+k);
+    if(r.a) m[c1+"|a|"+r.a.toLowerCase()] = Math.max(m[c1+"|a|"+r.a.toLowerCase()]??-1, +k);
+    if(r.p) m[c2+"|p|"+r.p.toLowerCase()] = Math.max(m[c2+"|p|"+r.p.toLowerCase()]??-1, +k);
+  }
+  return m;
+}
+
+function usedIndex(){
+  const map = {};
+  for(const k in S.rec){
+    const r = S.rec[k];
+    if(r.a) (map[r.a.toLowerCase()] ||= []).push(+k);
+    if(r.p) (map[r.p.toLowerCase()] ||= []).push(+k);
+  }
+  return map;
+}
+
+/* ---------- render ---------- */
+function renderRibbon(){
+  const rb = document.getElementById("ribbon");
+  rb.innerHTML = "";
+  const from = Math.max(0, S.pos-40), to = Math.min(STAGES, S.pos+40);
+  for(let i=from;i<to;i++){
+    const b = document.createElement("button");
+    b.className = "quad" + (i===S.pos ? " now" : (S.rec[i] ? " done" : ""));
+    b.textContent = quad(i);
+    b.title = "Stage " + (i+1);
+    b.onclick = () => { S.pos = i; save(); renderAll(); };
+    rb.appendChild(b);
+  }
+  const cur = rb.children[S.pos-from];
+  if(cur) rb.scrollLeft = cur.offsetLeft - rb.clientWidth/2 + cur.clientWidth/2;
+}
+
+function chipEl(e, role, code, used, sel){
+  const wrap = document.createElement("div");
+  wrap.className = "gwrap";
+  const c = document.createElement("div");
+  c.className = "chip" + (sel === e.w ? " on" : "");
+
+  const b = document.createElement("button");
+  b.className = "w";
+  b.innerHTML = esc(e.w) + (e.sp ? ' <span class="deg">°</span>' : "");
+  const u = used[e.w.toLowerCase()];
+  if(u && u.length){
+    const s = document.createElement("span");
+    s.className = "used";
+    s.textContent = " ·" + u.map(n=>n+1).join(",");
+    s.title = "Already used at stage " + u.map(n=>n+1).join(", ");
+    b.appendChild(s);
+  }
+  b.onclick = () => choose(role, e.w);
+  c.appendChild(b);
+
+  if(e.g){
+    const gb = document.createElement("button");
+    gb.className = "mini"; gb.textContent = "?";
+    gb.setAttribute("aria-label","What is " + e.w);
+    gb.onclick = () => {
+      const id = role+"|"+e.w;
+      openGloss[id] = !openGloss[id];
+      renderPickers();
+    };
+    c.appendChild(gb);
+  }
+
+  wrap.appendChild(c);
+  if(e.g && openGloss[role+"|"+e.w]){
+    const g = document.createElement("div");
+    g.className = "glossrow"; g.textContent = e.g;
+    wrap.appendChild(g);
+  }
+  return wrap;
+}
+
+function fallback(role, code, sel){
+  const d = document.createElement("div");
+  d.className = "empty";
+  d.innerHTML = "No <code>pegs/"+code+".md</code> yet. Type a peg instead:";
+  const inp = document.createElement("input");
+  inp.className = "manual";
+  inp.style.marginTop = "9px";
+  inp.placeholder = "Peg for " + code;
+  inp.value = sel || "";
+  inp.oninput = () => { rawChoose(role, inp.value.trim()); };
+  d.appendChild(inp);
+  return d;
+}
+
+async function renderPickers(){
+  const [ca, cp] = codes(S.pos);
+  const rec = S.rec[S.pos] || {};
+  const used = usedIndex(), picked = pickedMap();
+  for(const [role, code, sel] of [["a",ca,rec.a],["p",cp,rec.p]]){
+    const host = document.getElementById(role==="a"?"chipsA":"chipsP");
+    const cnt  = document.getElementById(role==="a"?"cntA":"cntP");
+    const filt = document.getElementById(role==="a"?"filtA":"filtP").value.trim().toLowerCase();
+    const data = await getBucket(code);
+    host.innerHTML = "";
+    if(!data){ cnt.textContent = code; host.appendChild(fallback(role, code, sel)); continue; }
+    let list = (role==="a" ? data.active : data.passive).slice();
+    // anything you have ever recorded for this bucket and role, but which is
+    // not in the generated list, becomes a chip of its own
+    const have = new Set(list.map(e => e.w.toLowerCase()));
+    for(const key in picked){
+      const pre = code + "|" + role + "|";
+      if(key.startsWith(pre)){
+        const w = key.slice(pre.length);
+        if(!have.has(w)){
+          const k = +picked[key];
+          const rr = S.rec[k];
+          const orig = rr ? (role === "a" ? rr.a : rr.p) : w;
+          list.push({w: orig || w, g: null, sp: false});
+          have.add(w);
+        }
+      }
+    }
+    if(!list.length){
+      cnt.textContent = code;
+      host.appendChild(fallback(role, code, sel));
+      continue;
+    }
+    // words you have already chosen for this bucket float up, newest first;
+    // everything else keeps the generated imageability order
+    const pk = picked, pfx = code + "|" + role + "|";
+    list.sort((x,y) => (pk[pfx+y.w.toLowerCase()] ?? -1) - (pk[pfx+x.w.toLowerCase()] ?? -1));
+    const matched = filt
+      ? list.filter(e => e.w.toLowerCase().includes(filt) || (e.g||"").toLowerCase().includes(filt))
+      : list;
+    cnt.textContent = code + " · " + matched.length + (filt ? " of " + list.length : "");
+    if(!matched.length){
+      const d = document.createElement("div");
+      d.className = "empty"; d.textContent = "Nothing matches that.";
+      host.appendChild(d);
+      continue;
+    }
+    // a filter is an explicit ask, so it shows everything it found
+    const cut = (filt || expand[role]) ? matched.length : SHOW_N;
+    const shown = matched.slice(0, cut);
+    const frag = document.createDocumentFragment();
+    for(const e of shown) frag.appendChild(chipEl(e, role, code, used, sel));
+    host.appendChild(frag);
+    if(matched.length > shown.length){
+      const mb = document.createElement("button");
+      mb.className = "more";
+      mb.textContent = "Show " + (matched.length - shown.length) + " more";
+      mb.onclick = () => { expand[role] = true; renderPickers(); };
+      host.appendChild(mb);
+    }
+  }
+}
+
+function renderStage(){
+  const [ca, cp] = codes(S.pos);
+  const rec = S.rec[S.pos] || {};
+  document.getElementById("stagenum").textContent = (S.pos+1) + " / " + STAGES;
+  document.getElementById("digA").textContent = ca;
+  document.getElementById("digP").textContent = cp;
+  document.getElementById("sndA").textContent = sounds(ca);
+  document.getElementById("sndP").textContent = sounds(cp);
+  setEd("slotA", rec.a); setEd("slotP", rec.p);
+  document.getElementById("slotA").className = "slot a" + (rec.a ? " set" : " blank");
+  document.getElementById("slotP").className = "slot p" + (rec.p ? " set" : " blank");
+  setEd("edPre", rec.pre); setEd("edMid", rec.mid); setEd("edPost", rec.post);
+  document.getElementById("btnLock").disabled = !(rec.a && rec.p);
+  document.getElementById("btnLock").textContent = rec.locked ? "Locked · next" : "Lock in";
+  document.getElementById("btnPrev").disabled = S.pos === 0;
+}
+
+function renderAll(){
+  openGloss = {}; expand = {a:false, p:false};
+  document.getElementById("filtA").value = "";
+  document.getElementById("filtP").value = "";
+  renderStage(); renderRibbon(); renderPickers();
+  window.scrollTo({top:0, behavior:"instant"});
+}
+
+/* ---------- actions ---------- */
+function rawChoose(role, w){
+  const r = (S.rec[S.pos] ||= {});
+  r[role] = w || undefined;
+  save(); renderStage();
+}
+function choose(role, w){
+  const r = (S.rec[S.pos] ||= {});
+  r[role] = (r[role] === w) ? undefined : w;
+  save(); renderStage(); renderPickers();
+}
+function lockIn(){
+  const r = S.rec[S.pos];
+  if(!r || !r.a || !r.p) return;
+  saveScene();
+  r.locked = 1; r.ts = Date.now();
+  save();
+  if(S.pos < STAGES-1) S.pos++;
+  save(); renderAll();
+  toast("Locked");
+}
+function step(d){
+  if(S.rec[S.pos]) saveScene();
+  S.pos = Math.min(STAGES-1, Math.max(0, S.pos + d));
+  save(); renderAll();
+}
+
+function setEd(id, val){
+  const el = document.getElementById(id);
+  if(document.activeElement === el) return;
+  el.textContent = val || "";
+  el.classList.toggle("blank", !el.textContent.trim());
+}
+function readEd(id){
+  const el = document.getElementById(id);
+  const t = el.textContent.replace(/\s+/g," ").trim();
+  return t || undefined;
+}
+function saveScene(){
+  const r = (S.rec[S.pos] ||= {});
+  r.pre = readEd("edPre"); r.mid = readEd("edMid"); r.post = readEd("edPost");
+  r.a = readEd("slotA"); r.p = readEd("slotP");
+  save();
+  document.getElementById("btnLock").disabled = !(r.a && r.p);
+}
+function sentence(r){
+  return [r.pre, r.a, r.mid, r.p, r.post].filter(Boolean).join(" ");
+}
+
+/* ---------- log ---------- */
+function renderLog(){
+  const body = document.getElementById("logBody");
+  const keys = Object.keys(S.rec).map(Number).filter(k => S.rec[k].a || S.rec[k].p).sort((a,b)=>a-b);
+  if(!keys.length){
+    body.innerHTML = '<div class="empty">Nothing locked in yet. Pick two pegs and the stage lands here.</div>';
+    return;
+  }
+  body.innerHTML = "";
+  for(const k of keys){
+    const r = S.rec[k];
+    const row = document.createElement("div"); row.className = "logrow";
+    const d = document.createElement("div"); d.className = "logdig"; d.textContent = quad(k);
+    const rt = document.createElement("div");
+    const w = document.createElement("div"); w.className = "logwords";
+    w.innerHTML = (r.pre ? esc(r.pre)+" " : "")
+      + '<span class="wa">'+esc(r.a||"—")+'</span> '
+      + (r.mid ? esc(r.mid)+" " : '<span style="color:var(--faint)">→</span> ')
+      + '<span class="wp">'+esc(r.p||"—")+'</span>'
+      + (r.post ? " "+esc(r.post) : "");
+    rt.appendChild(w);
+    if(r.note){ const n=document.createElement("div"); n.className="lognote"; n.textContent=r.note; rt.appendChild(n); }
+    const meta = document.createElement("div"); meta.className = "logmeta";
+    meta.textContent = "stage " + (k+1) + (r.locked ? "" : " · unlocked");
+    rt.appendChild(meta);
+    const j = document.createElement("button"); j.className = "logjump"; j.textContent = "Go to stage";
+    j.onclick = () => { S.pos = k; save(); closeSheets(); renderAll(); };
+    rt.appendChild(j);
+    row.appendChild(d); row.appendChild(rt); body.appendChild(row);
+  }
+}
+
+/* ---------- misc ---------- */
+function esc(s){ return String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+let toastT;
+function toast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(toastT); toastT = setTimeout(()=>t.classList.remove("show"), 1500);
+}
+function closeSheets(){
+  document.getElementById("logSheet").classList.add("hide");
+  document.getElementById("helpSheet").classList.add("hide");
+}
+
+/* ---------- wiring ---------- */
+document.getElementById("btnLock").onclick = lockIn;
+document.getElementById("btnPrev").onclick = () => step(-1);
+document.getElementById("btnNext").onclick = () => step(1);
+document.getElementById("filtA").oninput = renderPickers;
+document.getElementById("filtP").oninput = renderPickers;
+for(const id of ["edPre","edMid","edPost","slotA","slotP"]){
+  const el = document.getElementById(id);
+  el.addEventListener("input", () => {
+    el.classList.toggle("blank", !el.textContent.trim());
+    saveScene();
+  });
+  el.addEventListener("blur", () => {
+    if(!el.textContent.trim()) el.textContent = "";
+    el.classList.toggle("blank", !el.textContent.trim());
+    if(el.classList.contains("slot"))
+      el.classList.toggle("set", !!el.textContent.trim());
+    saveScene();
+    if(el.classList.contains("slot")) renderPickers();
+  });
+  el.addEventListener("paste", ev => {
+    ev.preventDefault();
+    const t = (ev.clipboardData || window.clipboardData).getData("text").replace(/\s+/g," ");
+    document.execCommand("insertText", false, t);
+  });
+  el.addEventListener("keydown", ev => { if(ev.key === "Enter") ev.preventDefault(); });
+}
+document.getElementById("btnLog").onclick = () => { renderLog(); document.getElementById("logSheet").classList.remove("hide"); };
+document.getElementById("closeLog").onclick = closeSheets;
+document.getElementById("btnHelp").onclick = () => document.getElementById("helpSheet").classList.remove("hide");
+document.getElementById("closeHelp").onclick = closeSheets;
+
+document.getElementById("btnExport").onclick = () => {
+  const blob = new Blob([JSON.stringify(S,null,1)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "pi-pegs-" + new Date().toISOString().slice(0,10) + ".json";
+  a.click(); URL.revokeObjectURL(a.href);
+};
+document.getElementById("btnImport").onclick = () => document.getElementById("fileIn").click();
+document.getElementById("fileIn").onchange = function(){
+  const f = this.files[0]; if(!f) return;
+  const fr = new FileReader();
+  fr.onload = () => {
+    try{
+      const o = JSON.parse(fr.result);
+      S = {pos:o.pos||0, rec:o.rec||{}};
+      save(); closeSheets(); renderAll(); toast("Imported");
+    }catch(e){ toast("That file didn't parse"); }
+  };
+  fr.readAsText(f); this.value = "";
+};
+document.getElementById("btnReset").onclick = () => {
+  if(!confirm("Erase every locked stage, note and pin? Export first if you want a copy.")) return;
+  S = {pos:0, rec:{}}; save(); closeSheets(); renderAll(); toast("Erased");
+};
+document.addEventListener("keydown", e => {
+  if(e.target.matches("input,textarea") || e.target.isContentEditable) return;
+  if(e.key === "Escape") closeSheets();
+  if(e.key === "ArrowLeft") step(-1);
+  if(e.key === "ArrowRight") step(1);
+  if(e.key === "Enter" && !document.getElementById("btnLock").disabled) lockIn();
+});
+
+(function keyTable(){
+  const t = document.getElementById("keyTable");
+  for(let i=0;i<10;i++){
+    const s = document.createElement("span");
+    s.innerHTML = i + " &nbsp;<i>" + SOUND[i] + "</i>";
+    t.appendChild(s);
+  }
+})();
+
+renderAll();
+</script>
+</body>
+</html>
