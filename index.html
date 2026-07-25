@@ -549,34 +549,37 @@ async function renderPickers(){
     const frag = document.createDocumentFragment();
     for(const e of shown) frag.appendChild(chipEl(e, role, code, used, sel));
     host.appendChild(frag);
-    if(matched.length > shown.length){
+    // the same bucket's other column. The active/passive split is a judgement
+    // call, so it stays reachable whether or not this list overflowed.
+    const otherRole = role === "a" ? "passive" : "active";
+    const mine = new Set(list.map(e => e.w.toLowerCase()));
+    let cross = (role === "a" ? data.passive : data.active)
+      .filter(e => !mine.has(e.w.toLowerCase()));
+    if(filt) cross = cross.filter(e =>
+      e.w.toLowerCase().includes(filt) || (e.g||"").toLowerCase().includes(filt));
+    const hidden = matched.length - shown.length;
+
+    if(!expand[role] && (hidden || cross.length)){
       const mb = document.createElement("button");
       mb.className = "more";
-      mb.textContent = "Show " + (matched.length - shown.length) + " more";
+      mb.textContent = hidden
+        ? "Show " + hidden + " more"
+        : "Show " + cross.length + " tagged " + otherRole;
       mb.onclick = () => { expand[role] = true; renderPickers(); };
       host.appendChild(mb);
     }
-    // once expanded, also offer the same bucket's other column — the
-    // active/passive split is a judgement call and often worth overriding
-    if(expand[role]){
-      const other = role === "a" ? data.passive : data.active;
-      const mine = new Set(list.map(e => e.w.toLowerCase()));
-      let cross = other.filter(e => !mine.has(e.w.toLowerCase()));
-      if(filt) cross = cross.filter(e =>
-        e.w.toLowerCase().includes(filt) || (e.g||"").toLowerCase().includes(filt));
-      if(cross.length){
-        const lab = document.createElement("div");
-        lab.className = "crossnote";
-        lab.textContent = code + " tagged " + (role === "a" ? "passive" : "active");
-        host.appendChild(lab);
-        const cf = document.createDocumentFragment();
-        for(const e of cross){
-          const el = chipEl(e, role, code, used, sel);
-          el.querySelector(".chip").classList.add("cross");
-          cf.appendChild(el);
-        }
-        host.appendChild(cf);
+    if(expand[role] && cross.length){
+      const lab = document.createElement("div");
+      lab.className = "crossnote";
+      lab.textContent = code + " tagged " + otherRole;
+      host.appendChild(lab);
+      const cf = document.createDocumentFragment();
+      for(const e of cross){
+        const el = chipEl(e, role, code, used, sel);
+        el.querySelector(".chip").classList.add("cross");
+        cf.appendChild(el);
       }
+      host.appendChild(cf);
     }
   }
 }
