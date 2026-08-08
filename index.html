@@ -203,7 +203,7 @@ main{padding:0 14px 220px}
 }
 
 /* ── check mode ─────────────────────────────────────────── */
-.check-wrap{padding:0 14px 60px}
+.check-wrap{padding:0 14px calc(env(safe-area-inset-bottom,0px) + 310px)}
 .ck-track-wrap{background:rgba(14,17,22,.94);backdrop-filter:blur(12px);
   border-bottom:1px solid var(--line);padding:12px 14px 10px;margin:0 -14px}
 .ck-track{font-family:var(--mono);font-size:20px;letter-spacing:.14em;
@@ -212,14 +212,15 @@ main{padding:0 14px 220px}
 .ck-seg.cur{color:var(--gold)}
 .ck-meta{font-family:var(--mono);font-size:11px;letter-spacing:.13em;
   text-transform:uppercase;color:var(--faint);margin-top:6px}
-.kpad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;
-  max-width:300px;margin:28px auto 0}
+.kpad{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);
+  left:14px;right:14px;max-width:300px;margin:0 auto;z-index:10;
+  display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .kbtn{background:var(--panel);border:1px solid var(--line);border-radius:8px;
   font-family:var(--mono);font-size:24px;font-weight:500;color:var(--bone);
   height:68px;display:flex;align-items:center;justify-content:center;
-  transition:background .1s,border-color .1s}
-.kbtn:active,.kbtn:hover{background:var(--panel2);border-color:var(--dim)}
-.kbtn.del{font-size:16px;color:var(--dim)}
+  transition:background .1s,border-color .1s;-webkit-tap-highlight-color:transparent}
+.kbtn:active{background:var(--panel2);border-color:var(--dim)}
+@media(hover:hover){.kbtn:hover{background:var(--panel2);border-color:var(--dim)}}
 .ck-review{padding-top:8px}
 .ck-scene{font-family:var(--disp);font-size:18px;line-height:1.55;
   background:var(--panel2);border:1px solid var(--line);border-radius:7px;
@@ -232,7 +233,8 @@ main{padding:0 14px 220px}
 .ckbtn{background:var(--panel);border:1px solid var(--line);border-radius:7px;
   color:var(--bone);padding:14px 16px;text-align:left;font-size:15px;
   min-height:50px;width:100%;transition:border-color .1s}
-.ckbtn:hover,.ckbtn:focus-visible{border-color:var(--dim)}
+.ckbtn:focus-visible{border-color:var(--dim)}
+@media(hover:hover){.ckbtn:hover{border-color:var(--dim)}}
 .ck-mixup{margin-top:4px}
 .ck-retry-hint{text-align:center;padding-top:20px}
 .ck-retry-label{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;
@@ -878,13 +880,13 @@ document.getElementById('btnCheck').onclick = () => inCheck ? exitCheck() : ente
 function buildKpad(){
   const kp = document.getElementById('kpad');
   kp.innerHTML = '';
-  // layout: 1-9 then blank/0/del
-  [1,2,3,4,5,6,7,8,9,null,0,'⌫'].forEach(v => {
+  // 1–9 then blank / 0 / blank (0 centred on last row)
+  [1,2,3,4,5,6,7,8,9,null,0,null].forEach(v => {
     if(v === null){ kp.appendChild(document.createElement('div')); return; }
     const b = document.createElement('button');
-    b.className = 'kbtn' + (v==='⌫' ? ' del' : '');
+    b.className = 'kbtn';
     b.textContent = v;
-    b.onclick = () => v==='⌫' ? ckBack() : ckDigit(String(v));
+    b.onclick = () => { ckDigit(String(v)); b.blur(); };
     kp.appendChild(b);
   });
 }
@@ -996,7 +998,7 @@ function ckShowClassify(imgIdx){
   ['Missed Location','Mixed Up Image','Wrong Decoding','Forgot Image'].forEach(label => {
     const b = document.createElement('button');
     b.className = 'ckbtn'; b.textContent = label;
-    b.onclick = () => ckClassify(imgIdx, label);
+    b.onclick = () => { b.blur(); ckClassify(imgIdx, label); };
     btns.appendChild(b);
   });
 }
@@ -1026,7 +1028,7 @@ async function ckClassify(imgIdx, type){
         b.className = 'chip';
         b.style.cssText = 'min-height:42px;padding:9px 14px;cursor:pointer';
         b.textContent = e.w;
-        b.onclick = () => { CK.errEntry.images[imgIdx].confused=e.w; ckAfterClassify(imgIdx); };
+        b.onclick = () => { b.blur(); CK.errEntry.images[imgIdx].confused=e.w; ckAfterClassify(imgIdx); };
         chips.appendChild(b);
       });
     }
