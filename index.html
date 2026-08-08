@@ -199,7 +199,46 @@ main{padding:0 14px 220px}
   main,header{max-width:660px;margin-left:auto;margin-right:auto}
   .bar>*{max-width:660px;margin-left:auto;margin-right:auto}
   .pdig{font-size:46px}
+  .check-wrap{max-width:660px;margin-left:auto;margin-right:auto}
 }
+
+/* ── check mode ─────────────────────────────────────────── */
+.check-wrap{padding:0 14px 60px}
+.ck-track-wrap{background:rgba(14,17,22,.94);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--line);padding:12px 14px 10px;margin:0 -14px}
+.ck-track{font-family:var(--mono);font-size:20px;letter-spacing:.14em;
+  display:flex;flex-wrap:wrap;gap:14px;min-height:30px}
+.ck-seg{color:var(--faint)}
+.ck-seg.cur{color:var(--gold)}
+.ck-meta{font-family:var(--mono);font-size:11px;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--faint);margin-top:6px}
+.kpad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;
+  max-width:300px;margin:28px auto 0}
+.kbtn{background:var(--panel);border:1px solid var(--line);border-radius:8px;
+  font-family:var(--mono);font-size:24px;font-weight:500;color:var(--bone);
+  height:68px;display:flex;align-items:center;justify-content:center;
+  transition:background .1s,border-color .1s}
+.kbtn:active,.kbtn:hover{background:var(--panel2);border-color:var(--dim)}
+.kbtn.del{font-size:16px;color:var(--dim)}
+.ck-review{padding-top:8px}
+.ck-scene{font-family:var(--disp);font-size:18px;line-height:1.55;
+  background:var(--panel2);border:1px solid var(--line);border-radius:7px;
+  padding:14px;margin-bottom:4px}
+.ck-scene-label{font-family:var(--mono);font-size:10px;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--gold);margin-bottom:8px}
+.ck-q{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--dim);margin:18px 0 12px}
+.ck-btns{display:flex;flex-direction:column;gap:8px}
+.ckbtn{background:var(--panel);border:1px solid var(--line);border-radius:7px;
+  color:var(--bone);padding:14px 16px;text-align:left;font-size:15px;
+  min-height:50px;width:100%;transition:border-color .1s}
+.ckbtn:hover,.ckbtn:focus-visible{border-color:var(--dim)}
+.ck-mixup{margin-top:4px}
+.ck-retry-hint{text-align:center;padding-top:20px}
+.ck-retry-label{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--dim);margin-bottom:16px}
+.ck-retry-display{font-family:var(--mono);font-size:40px;letter-spacing:.25em;
+  color:var(--gold);min-height:52px}
 </style>
 </head>
 <body>
@@ -210,6 +249,7 @@ main{padding:0 14px 220px}
     <span class="stagelab">d.p.</span>
     <span class="stagenum" id="stagenum">1–4</span>
     <span class="hspace"></span>
+    <button class="iconbtn" id="btnCheck">Check</button>
     <button class="iconbtn" id="btnLog">Log</button>
     <button class="iconbtn" id="btnHelp">Key</button>
   </div>
@@ -250,6 +290,32 @@ main{padding:0 14px 220px}
     <div class="chips" id="chipsP"></div>
   </section>
 </main>
+
+<div class="check-wrap hide" id="checkWrap">
+  <div class="ck-track-wrap">
+    <div class="ck-track" id="ckTrack"></div>
+    <div class="ck-meta" id="ckMeta"></div>
+  </div>
+
+  <div class="ck-review hide" id="ckReview">
+    <div class="ck-scene" id="ckScene"></div>
+    <div id="ckClassifySection">
+      <div class="ck-q" id="ckQ"></div>
+      <div class="ck-btns" id="ckBtns"></div>
+    </div>
+    <div class="ck-mixup hide" id="ckMixup">
+      <div class="ck-q">Which image did you think it was?</div>
+      <div class="chips" id="ckMixupChips"></div>
+    </div>
+  </div>
+
+  <div class="ck-retry-hint hide" id="ckRetryHint">
+    <div class="ck-retry-label">Re-enter the correct 4 digits</div>
+    <div class="ck-retry-display" id="ckRetryDisplay"></div>
+  </div>
+
+  <div class="kpad" id="kpad"></div>
+</div>
 
 <div class="bar">
   <div class="barrow">
@@ -339,10 +405,10 @@ function load(){
     const raw = localStorage.getItem(KEY);
     if(raw){
       const o = JSON.parse(raw);
-      return {pos:o.pos||0, rec:o.rec||{}};
+      return {pos:o.pos||0, rec:o.rec||{}, errors:o.errors||[]};
     }
   }catch(e){}
-  return {pos:0, rec:{}};
+  return {pos:0, rec:{}, errors:[]};
 }
 function save(){
   try{ localStorage.setItem(KEY, JSON.stringify(S)); }
@@ -751,7 +817,7 @@ document.getElementById("fileIn").onchange = function(){
   fr.onload = () => {
     try{
       const o = JSON.parse(fr.result);
-      S = {pos:o.pos||0, rec:o.rec||{}};
+      S = {pos:o.pos||0, rec:o.rec||{}, errors:o.errors||[]};
       save(); closeSheets(); renderAll(); toast("Imported");
     }catch(e){ toast("That file didn't parse"); }
   };
@@ -762,12 +828,256 @@ document.getElementById("btnReset").onclick = () => {
   S = {pos:0, rec:{}}; save(); closeSheets(); renderAll(); toast("Erased");
 };
 document.addEventListener("keydown", e => {
+  if(inCheck){
+    if(CK.phase==='input'||CK.phase==='retry'){
+      if(/^\d$/.test(e.key)){ ckDigit(e.key); return; }
+      if(e.key==='Backspace'){ e.preventDefault(); ckBack(); return; }
+    }
+    if(e.key==='Escape'){ exitCheck(); return; }
+    return;
+  }
   if(e.target.matches("input,textarea") || e.target.isContentEditable) return;
   if(e.key === "Escape") closeSheets();
   if(e.key === "ArrowLeft") step(-1);
   if(e.key === "ArrowRight") step(1);
   if(e.key === "Enter" && !document.getElementById("btnLock").disabled) lockIn();
 });
+
+/* ── check mode ─────────────────────────────────────────── */
+let inCheck = false;
+let CK = {pos:0, buf:'', done:'', phase:'input',
+  wrongMask:[false,false], reviewImg:0, errEntry:null, retryBuf:''};
+
+function enterCheck(){
+  inCheck = true;
+  CK = {pos:S.pos, buf:'', done:'', phase:'input',
+    wrongMask:[false,false], reviewImg:0, errEntry:null, retryBuf:''};
+  document.querySelector('main').classList.add('hide');
+  document.querySelector('.bar').classList.add('hide');
+  document.getElementById('ribbon').classList.add('hide');
+  document.getElementById('checkWrap').classList.remove('hide');
+  document.getElementById('btnCheck').textContent = 'Encode';
+  buildKpad();
+  ckSetPhase('input');
+  ckRenderTrack();
+  ckRenderMeta();
+}
+
+function exitCheck(){
+  inCheck = false;
+  document.querySelector('main').classList.remove('hide');
+  document.querySelector('.bar').classList.remove('hide');
+  document.getElementById('ribbon').classList.remove('hide');
+  document.getElementById('checkWrap').classList.add('hide');
+  document.getElementById('btnCheck').textContent = 'Check';
+  renderStage();
+}
+
+document.getElementById('btnCheck').onclick = () => inCheck ? exitCheck() : enterCheck();
+
+function buildKpad(){
+  const kp = document.getElementById('kpad');
+  kp.innerHTML = '';
+  // layout: 1-9 then blank/0/del
+  [1,2,3,4,5,6,7,8,9,null,0,'⌫'].forEach(v => {
+    if(v === null){ kp.appendChild(document.createElement('div')); return; }
+    const b = document.createElement('button');
+    b.className = 'kbtn' + (v==='⌫' ? ' del' : '');
+    b.textContent = v;
+    b.onclick = () => v==='⌫' ? ckBack() : ckDigit(String(v));
+    kp.appendChild(b);
+  });
+}
+
+function ckRenderTrack(){
+  const track = document.getElementById('ckTrack');
+  track.innerHTML = '';
+  const n = Math.floor(CK.done.length / 4);
+  const from = Math.max(0, n - 3);
+  for(let i = from; i < n; i++){
+    const sp = document.createElement('span');
+    sp.className = 'ck-seg';
+    sp.textContent = CK.done.slice(i*4, i*4+4);
+    track.appendChild(sp);
+  }
+  const cur = document.createElement('span');
+  cur.className = 'ck-seg cur';
+  cur.textContent = CK.buf.padEnd(4, '·');
+  track.appendChild(cur);
+}
+
+function ckRenderMeta(){
+  const dp = CK.pos * 4 + 1;
+  document.getElementById('ckMeta').textContent = 'd.p. ' + dp + '–' + (dp+3);
+  document.getElementById('stagenum').textContent = dp + '–' + (dp+3);
+}
+
+function ckSetPhase(p){
+  CK.phase = p;
+  document.getElementById('ckReview').classList.toggle('hide', p!=='review');
+  document.getElementById('ckRetryHint').classList.toggle('hide', p!=='retry');
+  document.getElementById('kpad').classList.toggle('hide', p==='review');
+}
+
+function ckDigit(d){
+  if(CK.phase==='input'){
+    if(CK.buf.length>=4) return;
+    CK.buf += d;
+    ckRenderTrack();
+    if(CK.buf.length===4) ckEval();
+  } else if(CK.phase==='retry'){
+    if(CK.retryBuf.length>=4) return;
+    CK.retryBuf += d;
+    ckRenderRetry();
+    if(CK.retryBuf.length===4) ckCheckRetry();
+  }
+}
+
+function ckBack(){
+  if(CK.phase==='input' && CK.buf.length>0){
+    CK.buf = CK.buf.slice(0,-1);
+    ckRenderTrack();
+  } else if(CK.phase==='retry' && CK.retryBuf.length>0){
+    CK.retryBuf = CK.retryBuf.slice(0,-1);
+    ckRenderRetry();
+  }
+}
+
+function ckEval(){
+  const expected = quad(CK.pos);
+  if(CK.buf===expected){
+    CK.done += CK.buf;
+    CK.buf = '';
+    CK.pos++;
+    ckRenderTrack();
+    ckRenderMeta();
+  } else {
+    const w0 = CK.buf.slice(0,2) !== expected.slice(0,2);
+    const w1 = CK.buf.slice(2,4) !== expected.slice(2,4);
+    CK.wrongMask = [w0, w1];
+    CK.errEntry = {pos:CK.pos, ts:Date.now(), images:[{},{}]};
+    ckShowReview();
+  }
+}
+
+function sceneHTML(rec){
+  const parts = [];
+  if(rec.pre) parts.push(esc(rec.pre));
+  if(rec.a)   parts.push('<span style="color:var(--bronze)">'+esc(rec.a)+'</span>');
+  if(rec.mid) parts.push(esc(rec.mid));
+  if(rec.p)   parts.push('<span style="color:var(--marble)">'+esc(rec.p)+'</span>');
+  if(rec.post) parts.push(esc(rec.post));
+  return parts.length ? parts.join(' ')
+    : '<span style="color:var(--faint);font-style:italic">No scene recorded for this stage.</span>';
+}
+
+function ckShowReview(){
+  ckSetPhase('review');
+  const rec = S.rec[CK.pos] || {};
+  const q = quad(CK.pos);
+  const dp = CK.pos*4+1;
+  document.getElementById('ckScene').innerHTML =
+    '<div class="ck-scene-label">'+esc(q)+' · d.p. '+dp+'–'+(dp+3)+'</div>'
+    + sceneHTML(rec);
+  document.getElementById('ckMixup').classList.add('hide');
+  document.getElementById('ckClassifySection').classList.remove('hide');
+  // ask about first wrong image (or the only wrong one)
+  ckShowClassify(CK.wrongMask[0] ? 0 : 1);
+}
+
+function ckShowClassify(imgIdx){
+  CK.reviewImg = imgIdx;
+  const [ca,cp] = codes(CK.pos);
+  const code = imgIdx===0 ? ca : cp;
+  document.getElementById('ckQ').textContent =
+    'What went wrong with image '+(imgIdx+1)+' ('+code+')?';
+  const btns = document.getElementById('ckBtns');
+  btns.innerHTML = '';
+  ['Missed Location','Mixed Up Image','Wrong Decoding','Forgot Image'].forEach(label => {
+    const b = document.createElement('button');
+    b.className = 'ckbtn'; b.textContent = label;
+    b.onclick = () => ckClassify(imgIdx, label);
+    btns.appendChild(b);
+  });
+}
+
+async function ckClassify(imgIdx, type){
+  CK.errEntry.images[imgIdx] = {type};
+  if(type==='Mixed Up Image'){
+    document.getElementById('ckClassifySection').classList.add('hide');
+    document.getElementById('ckMixup').classList.remove('hide');
+    const [ca,cp] = codes(CK.pos);
+    const code = imgIdx===0 ? ca : cp;
+    const data = await getBucket(code);
+    const chips = document.getElementById('ckMixupChips');
+    chips.innerHTML = '';
+    const list = data ? [...(data.active||[]),...(data.passive||[])] : [];
+    if(!list.length){
+      const inp = document.createElement('input');
+      inp.className = 'manual'; inp.placeholder = 'Type the image you thought it was';
+      inp.oninput = () => { CK.errEntry.images[imgIdx].confused = inp.value.trim(); };
+      const cont = document.createElement('button');
+      cont.className = 'ckbtn'; cont.textContent = 'Continue'; cont.style.marginTop='10px';
+      cont.onclick = () => ckAfterClassify(imgIdx);
+      chips.appendChild(inp); chips.appendChild(cont);
+    } else {
+      list.forEach(e => {
+        const b = document.createElement('button');
+        b.className = 'chip';
+        b.style.cssText = 'min-height:42px;padding:9px 14px;cursor:pointer';
+        b.textContent = e.w;
+        b.onclick = () => { CK.errEntry.images[imgIdx].confused=e.w; ckAfterClassify(imgIdx); };
+        chips.appendChild(b);
+      });
+    }
+    return;
+  }
+  ckAfterClassify(imgIdx);
+}
+
+function ckAfterClassify(imgIdx){
+  const [w0,w1] = CK.wrongMask;
+  // stopping rule: both wrong, classified image 0 as Missed Location → skip image 1
+  if(w0 && w1 && imgIdx===0 && CK.errEntry.images[0].type==='Missed Location'){
+    ckCommitError(); ckStartRetry(); return;
+  }
+  // both wrong, just classified image 0 (not Missed Location) → ask image 1
+  if(w0 && w1 && imgIdx===0){
+    document.getElementById('ckMixup').classList.add('hide');
+    document.getElementById('ckClassifySection').classList.remove('hide');
+    ckShowClassify(1); return;
+  }
+  ckCommitError(); ckStartRetry();
+}
+
+function ckCommitError(){
+  S.errors = S.errors || [];
+  S.errors.push(CK.errEntry);
+  save();
+}
+
+function ckStartRetry(){
+  CK.retryBuf = '';
+  ckSetPhase('retry');
+  ckRenderRetry();
+}
+
+function ckRenderRetry(){
+  const display = CK.retryBuf.padEnd(4,'_').split('').join(' ');
+  document.getElementById('ckRetryDisplay').textContent = display;
+}
+
+function ckCheckRetry(){
+  const expected = quad(CK.pos);
+  if(CK.retryBuf===expected){
+    CK.done += expected; CK.buf = ''; CK.pos++;
+    ckSetPhase('input'); ckRenderTrack(); ckRenderMeta();
+  } else {
+    CK.retryBuf = '';
+    ckRenderRetry();
+    toast('Not quite — try again');
+  }
+}
 
 (function keyTable(){
   const t = document.getElementById("keyTable");
