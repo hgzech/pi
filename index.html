@@ -407,10 +407,10 @@ function load(){
     const raw = localStorage.getItem(KEY);
     if(raw){
       const o = JSON.parse(raw);
-      return {pos:o.pos||0, rec:o.rec||{}, errors:o.errors||[]};
+      return {pos:o.pos||0, rec:o.rec||{}, errors:o.errors||[], times:o.times||{}};
     }
   }catch(e){}
-  return {pos:0, rec:{}, errors:[]};
+  return {pos:0, rec:{}, errors:[], times:{}};
 }
 function save(){
   try{ localStorage.setItem(KEY, JSON.stringify(S)); }
@@ -819,7 +819,7 @@ document.getElementById("fileIn").onchange = function(){
   fr.onload = () => {
     try{
       const o = JSON.parse(fr.result);
-      S = {pos:o.pos||0, rec:o.rec||{}, errors:o.errors||[]};
+      S = {pos:o.pos||0, rec:o.rec||{}, errors:o.errors||[], times:o.times||{}};
       save(); closeSheets(); renderAll(); toast("Imported");
     }catch(e){ toast("That file didn't parse"); }
   };
@@ -827,7 +827,7 @@ document.getElementById("fileIn").onchange = function(){
 };
 document.getElementById("btnReset").onclick = () => {
   if(!confirm("Erase every locked stage, note and pin? Export first if you want a copy.")) return;
-  S = {pos:0, rec:{}}; save(); closeSheets(); renderAll(); toast("Erased");
+  S = {pos:0, rec:{}, errors:[], times:{}}; save(); closeSheets(); renderAll(); toast("Erased");
 };
 document.addEventListener("keydown", e => {
   if(inCheck){
@@ -848,12 +848,14 @@ document.addEventListener("keydown", e => {
 /* ── check mode ─────────────────────────────────────────── */
 let inCheck = false;
 let CK = {pos:0, buf:'', done:'', phase:'input',
-  wrongMask:[false,false], reviewImg:0, errEntry:null, retryBuf:''};
+  wrongMask:[false,false], reviewImg:0, errEntry:null, retryBuf:'',
+  stageStartTime:null};
 
 function enterCheck(){
   inCheck = true;
   CK = {pos:S.pos, buf:'', done:'', phase:'input',
-    wrongMask:[false,false], reviewImg:0, errEntry:null, retryBuf:''};
+    wrongMask:[false,false], reviewImg:0, errEntry:null, retryBuf:'',
+    stageStartTime:null};
   document.querySelector('main').classList.add('hide');
   document.querySelector('.bar').classList.add('hide');
   document.getElementById('ribbon').classList.add('hide');
@@ -924,6 +926,7 @@ function ckSetPhase(p){
 function ckDigit(d){
   if(CK.phase==='input'){
     if(CK.buf.length>=4) return;
+    if(CK.buf.length===0) CK.stageStartTime = Date.now();
     CK.buf += d;
     ckRenderTrack();
     if(CK.buf.length===4) ckEval();
@@ -946,8 +949,15 @@ function ckBack(){
 }
 
 function ckEval(){
+  const recallMs = CK.stageStartTime ? Date.now() - CK.stageStartTime : null;
+  CK.stageStartTime = null;
   const expected = quad(CK.pos);
   if(CK.buf===expected){
+    if(recallMs !== null){
+      S.times = S.times || {};
+      S.times[CK.pos] = recallMs;
+      save();
+    }
     CK.done += CK.buf;
     CK.buf = '';
     CK.pos++;
@@ -957,7 +967,7 @@ function ckEval(){
     const w0 = CK.buf.slice(0,2) !== expected.slice(0,2);
     const w1 = CK.buf.slice(2,4) !== expected.slice(2,4);
     CK.wrongMask = [w0, w1];
-    CK.errEntry = {pos:CK.pos, ts:Date.now(), images:[{},{}]};
+    CK.errEntry = {pos:CK.pos, ts:Date.now(), recallMs, typed:CK.buf, images:[{},{}]};
     ckShowReview();
   }
 }
@@ -1008,30 +1018,65 @@ async function ckClassify(imgIdx, type){
   if(type==='Mixed Up Image'){
     document.getElementById('ckClassifySection').classList.add('hide');
     document.getElementById('ckMixup').classList.remove('hide');
-    const [ca,cp] = codes(CK.pos);
-    const code = imgIdx===0 ? ca : cp;
-    const data = await getBucket(code);
+    // Use the WRONG digits the user typed, not the correct code
+    const wrongCode = CK.errEntry.typed.slice(imgIdx===0 ? 0 : 2, imgIdx===0 ? 2 : 4);
+    const data = await getBucket(wrongCode);
+    const allWords = data ? [...(data.active||[]),...(data.passive||[])] : [];
     const chips = document.getElementById('ckMixupChips');
     chips.innerHTML = '';
-    const list = data ? [...(data.active||[]),...(data.passive||[])] : [];
-    if(!list.length){
-      const inp = document.createElement('input');
-      inp.className = 'manual'; inp.placeholder = 'Type the image you thought it was';
-      inp.oninput = () => { CK.errEntry.images[imgIdx].confused = inp.value.trim(); };
-      const cont = document.createElement('button');
-      cont.className = 'ckbtn'; cont.textContent = 'Continue'; cont.style.marginTop='10px';
-      cont.onclick = () => ckAfterClassify(imgIdx);
-      chips.appendChild(inp); chips.appendChild(cont);
-    } else {
-      list.forEach(e => {
+
+    const done = (word) => {
+      CK.errEntry.images[imgIdx].confused = word;
+      ckAfterClassify(imgIdx);
+    };
+
+    // Filter input
+    const filt = document.createElement('input');
+    filt.className = 'filter';
+    filt.placeholder = 'Filter or type your own…';
+    filt.autocomplete = 'off';
+    filt.autocapitalize = 'off';
+    filt.spellcheck = false;
+
+    // Chip list
+    const chipList = document.createElement('div');
+    chipList.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-top:10px';
+
+    // "Use typed" button (hidden until user types something)
+    const useBtn = document.createElement('button');
+    useBtn.className = 'ckbtn';
+    useBtn.style.cssText = 'margin-top:10px;display:none';
+
+    const render = () => {
+      const q = filt.value.trim().toLowerCase();
+      chipList.innerHTML = '';
+      const shown = q
+        ? allWords.filter(e => e.w.toLowerCase().includes(q) || (e.g||'').toLowerCase().includes(q))
+        : allWords.slice(0, 40);
+      shown.forEach(e => {
         const b = document.createElement('button');
         b.className = 'chip';
         b.style.cssText = 'min-height:42px;padding:9px 14px;cursor:pointer';
         b.textContent = e.w;
-        b.onclick = () => { b.blur(); CK.errEntry.images[imgIdx].confused=e.w; ckAfterClassify(imgIdx); };
-        chips.appendChild(b);
+        b.onclick = () => { b.blur(); done(e.w); };
+        chipList.appendChild(b);
       });
-    }
+      const typed = filt.value.trim();
+      if(typed){
+        useBtn.textContent = 'Use "' + typed + '"';
+        useBtn.style.display = '';
+        useBtn.onclick = () => { useBtn.blur(); done(typed); };
+      } else {
+        useBtn.style.display = 'none';
+      }
+    };
+
+    filt.oninput = render;
+    render();
+
+    chips.appendChild(filt);
+    chips.appendChild(chipList);
+    chips.appendChild(useBtn);
     return;
   }
   ckAfterClassify(imgIdx);
