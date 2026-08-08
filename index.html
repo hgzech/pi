@@ -207,8 +207,8 @@ main{padding:0 14px 220px}
 <header>
   <div class="hrow">
     <span class="mark">π</span>
-    <span class="stagelab">stage</span>
-    <span class="stagenum" id="stagenum">1</span>
+    <span class="stagelab">d.p.</span>
+    <span class="stagenum" id="stagenum">1–4</span>
     <span class="hspace"></span>
     <button class="iconbtn" id="btnLog">Log</button>
     <button class="iconbtn" id="btnHelp">Key</button>
@@ -587,7 +587,7 @@ async function renderPickers(){
 function renderStage(){
   const [ca, cp] = codes(S.pos);
   const rec = S.rec[S.pos] || {};
-  document.getElementById("stagenum").textContent = (S.pos+1) + " / " + STAGES;
+  document.getElementById("stagenum").textContent = (S.pos*4+1) + "–" + (S.pos*4+4);
   document.getElementById("digA").textContent = ca;
   document.getElementById("digP").textContent = cp;
   document.getElementById("sndA").textContent = sounds(ca);
