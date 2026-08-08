@@ -865,6 +865,7 @@ function enterCheck(){
   ckSetPhase('input');
   ckRenderTrack();
   ckRenderMeta();
+  CK.stageStartTime = Date.now();
 }
 
 function exitCheck(){
@@ -926,7 +927,6 @@ function ckSetPhase(p){
 function ckDigit(d){
   if(CK.phase==='input'){
     if(CK.buf.length>=4) return;
-    if(CK.buf.length===0) CK.stageStartTime = Date.now();
     CK.buf += d;
     ckRenderTrack();
     if(CK.buf.length===4) ckEval();
@@ -961,6 +961,7 @@ function ckEval(){
     CK.done += CK.buf;
     CK.buf = '';
     CK.pos++;
+    CK.stageStartTime = Date.now();
     ckRenderTrack();
     ckRenderMeta();
   } else {
@@ -1118,6 +1119,7 @@ function ckCheckRetry(){
   const expected = quad(CK.pos);
   if(CK.retryBuf===expected){
     CK.done += expected; CK.buf = ''; CK.pos++;
+    CK.stageStartTime = Date.now();
     ckSetPhase('input'); ckRenderTrack(); ckRenderMeta();
   } else {
     CK.retryBuf = '';
