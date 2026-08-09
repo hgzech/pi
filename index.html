@@ -331,6 +331,7 @@ main{padding:0 14px 220px}
       <input class="ck-input" type="number" id="ckStartStage" min="1" step="1">
       <span class="ck-hint">random within encoded stages</span>
     </div>
+    <div id="ckContext" style="margin:20px 0 4px"></div>
     <button class="ckbtn" id="ckBeginBtn" style="margin-top:8px">Start →</button>
   </div>
 
@@ -930,6 +931,29 @@ function setupCheck(){
   document.getElementById('kpad').classList.add('hide');
   const nt = Math.floor((parseInt(document.getElementById('ckNumDigits').value)||60)/4);
   document.getElementById('ckStartStage').value = pickRandomStart(nt) + 1;
+  renderSetupContext();
+}
+
+function renderSetupContext(){
+  const startRaw = parseInt(document.getElementById('ckStartStage').value);
+  const startPos = isNaN(startRaw) ? 0 : Math.max(0, startRaw - 1);
+  const ctx = document.getElementById('ckContext');
+  ctx.innerHTML = '';
+  const positions = [startPos - 2, startPos - 1].filter(p => p >= 0);
+  if(!positions.length) return;
+  const lbl = document.createElement('div');
+  lbl.className = 'ck-label'; lbl.style.marginBottom = '10px';
+  lbl.textContent = 'Previous scenes';
+  ctx.appendChild(lbl);
+  positions.forEach(pos => {
+    const rec = S.rec[pos] || {};
+    const q = quad(pos); const dp = pos*4+1;
+    const card = document.createElement('div');
+    card.className = 'ck-scene'; card.style.cssText = 'margin-bottom:8px;opacity:.75';
+    card.innerHTML = '<div class="ck-scene-label">'+esc(q)+' · d.p. '+dp+'–'+(dp+3)+'</div>'
+      + sceneHTML(rec);
+    ctx.appendChild(card);
+  });
 }
 
 function exitCheck(){
@@ -946,7 +970,9 @@ document.getElementById('btnCheck').onclick = () => inCheck ? exitCheck() : setu
 document.getElementById('ckNumDigits').addEventListener('change', () => {
   const nt = Math.floor((parseInt(document.getElementById('ckNumDigits').value)||60)/4);
   document.getElementById('ckStartStage').value = pickRandomStart(nt) + 1;
+  renderSetupContext();
 });
+document.getElementById('ckStartStage').addEventListener('input', renderSetupContext);
 document.getElementById('ckBeginBtn').onclick = () => {
   const nd = Math.max(4, Math.round((parseInt(document.getElementById('ckNumDigits').value)||60)/4)*4);
   const nt = nd / 4;
