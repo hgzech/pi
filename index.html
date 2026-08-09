@@ -241,6 +241,30 @@ main{padding:0 14px 220px}
   text-transform:uppercase;color:var(--dim);margin-bottom:16px}
 .ck-retry-display{font-family:var(--mono);font-size:40px;letter-spacing:.25em;
   color:var(--gold);min-height:52px}
+/* ── check mode – setup / countdown / stats ── */
+@keyframes ckPop{
+  0%{transform:scale(1.4);opacity:0}
+  25%{transform:scale(1);opacity:1}
+  75%{transform:scale(1);opacity:1}
+  100%{transform:scale(.7);opacity:0}}
+.ck-panel{padding:28px 0}
+.ck-panel-title{font-family:var(--disp);font-size:26px;margin-bottom:24px}
+.ck-field{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
+.ck-label{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--dim)}
+.ck-input{width:100%;background:var(--panel);border:1px solid var(--line);
+  border-radius:6px;color:var(--bone);padding:12px 14px;
+  font-family:var(--mono);font-size:20px;min-height:52px;-webkit-appearance:none}
+.ck-input:focus{outline:none;border-color:var(--gold)}
+.ck-hint{font-family:var(--mono);font-size:11px;color:var(--faint);margin-top:3px}
+.ck-countdown{display:flex;align-items:center;justify-content:center;min-height:60vh}
+.ck-count-num{font-family:var(--mono);font-size:96px;font-weight:600;color:var(--gold)}
+.ck-stat-row{display:flex;justify-content:space-between;align-items:center;
+  padding:13px 0;border-bottom:1px solid var(--line);font-size:16px}
+.ck-stat-val{font-family:var(--mono);font-size:18px;color:var(--gold)}
+.ck-stat-section{font-family:var(--mono);font-size:10px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--faint);margin:20px 0 8px}
+.ck-actions{display:flex;flex-direction:column;gap:10px;margin-top:28px}
 </style>
 </head>
 <body>
@@ -294,29 +318,62 @@ main{padding:0 14px 220px}
 </main>
 
 <div class="check-wrap hide" id="checkWrap">
-  <div class="ck-track-wrap">
-    <div class="ck-track" id="ckTrack"></div>
-    <div class="ck-meta" id="ckMeta"></div>
-  </div>
 
-  <div class="ck-review hide" id="ckReview">
-    <div class="ck-scene" id="ckScene"></div>
-    <div id="ckClassifySection">
-      <div class="ck-q" id="ckQ"></div>
-      <div class="ck-btns" id="ckBtns"></div>
+  <!-- 1. Setup -->
+  <div id="ckSetup" class="ck-panel">
+    <div class="ck-panel-title">Check session</div>
+    <div class="ck-field">
+      <label class="ck-label" for="ckNumDigits">Number of digits</label>
+      <input class="ck-input" type="number" id="ckNumDigits" value="60" min="4" step="4">
     </div>
-    <div class="ck-mixup hide" id="ckMixup">
-      <div class="ck-q">Which image did you think it was?</div>
-      <div class="chips" id="ckMixupChips"></div>
+    <div class="ck-field">
+      <label class="ck-label" for="ckStartStage">Start at stage</label>
+      <input class="ck-input" type="number" id="ckStartStage" min="1" step="1">
+      <span class="ck-hint">random within encoded stages</span>
+    </div>
+    <button class="ckbtn" id="ckBeginBtn" style="margin-top:8px">Start →</button>
+  </div>
+
+  <!-- 2. Countdown -->
+  <div id="ckCountdown" class="ck-countdown hide">
+    <div id="ckCountNum" class="ck-count-num">3</div>
+  </div>
+
+  <!-- 3. Session -->
+  <div id="ckSession" class="hide">
+    <div class="ck-track-wrap">
+      <div class="ck-track" id="ckTrack"></div>
+      <div class="ck-meta" id="ckMeta"></div>
+    </div>
+    <div class="ck-review hide" id="ckReview">
+      <div class="ck-scene" id="ckScene"></div>
+      <div id="ckClassifySection">
+        <div class="ck-q" id="ckQ"></div>
+        <div class="ck-btns" id="ckBtns"></div>
+      </div>
+      <div class="ck-mixup hide" id="ckMixup">
+        <div class="ck-q">Which image did you think it was?</div>
+        <div id="ckMixupChips"></div>
+      </div>
+    </div>
+    <div class="ck-retry-hint hide" id="ckRetryHint">
+      <div class="ck-retry-label">Re-enter the correct 4 digits</div>
+      <div class="ck-retry-display" id="ckRetryDisplay"></div>
     </div>
   </div>
 
-  <div class="ck-retry-hint hide" id="ckRetryHint">
-    <div class="ck-retry-label">Re-enter the correct 4 digits</div>
-    <div class="ck-retry-display" id="ckRetryDisplay"></div>
+  <!-- 4. Stats -->
+  <div id="ckStats" class="ck-panel hide">
+    <div class="ck-panel-title">Session complete</div>
+    <div id="ckStatsBody"></div>
+    <div class="ck-actions">
+      <button class="ckbtn" id="ckExportCSV">Export all data (CSV)</button>
+      <button class="ckbtn" id="ckNewSession">New session</button>
+      <button class="ckbtn" id="ckExitBtn" style="color:var(--dim)">Back to encoding</button>
+    </div>
   </div>
 
-  <div class="kpad" id="kpad"></div>
+  <div class="kpad hide" id="kpad"></div>
 </div>
 
 <div class="bar">
@@ -336,6 +393,7 @@ main{padding:0 14px 220px}
   <div class="act" style="margin-top:20px">
     <button id="btnExport">Export JSON</button>
     <button id="btnImport">Import JSON</button>
+    <button id="btnExportCSV2">Export trials CSV</button>
     <button id="btnReset" class="danger">Erase everything</button>
   </div>
   <input type="file" id="fileIn" accept=".json,application/json" class="hide">
@@ -407,10 +465,10 @@ function load(){
     const raw = localStorage.getItem(KEY);
     if(raw){
       const o = JSON.parse(raw);
-      return {pos:o.pos||0, rec:o.rec||{}, errors:o.errors||[], times:o.times||{}};
+      return {pos:o.pos||0, rec:o.rec||{}, trials:o.trials||[]};
     }
   }catch(e){}
-  return {pos:0, rec:{}, errors:[], times:{}};
+  return {pos:0, rec:{}, trials:[]};
 }
 function save(){
   try{ localStorage.setItem(KEY, JSON.stringify(S)); }
@@ -819,7 +877,7 @@ document.getElementById("fileIn").onchange = function(){
   fr.onload = () => {
     try{
       const o = JSON.parse(fr.result);
-      S = {pos:o.pos||0, rec:o.rec||{}, errors:o.errors||[], times:o.times||{}};
+      S = {pos:o.pos||0, rec:o.rec||{}, trials:o.trials||[]};
       save(); closeSheets(); renderAll(); toast("Imported");
     }catch(e){ toast("That file didn't parse"); }
   };
@@ -827,7 +885,7 @@ document.getElementById("fileIn").onchange = function(){
 };
 document.getElementById("btnReset").onclick = () => {
   if(!confirm("Erase every locked stage, note and pin? Export first if you want a copy.")) return;
-  S = {pos:0, rec:{}, errors:[], times:{}}; save(); closeSheets(); renderAll(); toast("Erased");
+  S = {pos:0, rec:{}, trials:[]}; save(); closeSheets(); renderAll(); toast("Erased");
 };
 document.addEventListener("keydown", e => {
   if(inCheck){
@@ -847,25 +905,31 @@ document.addEventListener("keydown", e => {
 
 /* ── check mode ─────────────────────────────────────────── */
 let inCheck = false;
-let CK = {pos:0, buf:'', done:'', phase:'input',
-  wrongMask:[false,false], reviewImg:0, errEntry:null, retryBuf:'',
-  stageStartTime:null};
+let CK = {};
 
-function enterCheck(){
+function pickRandomStart(numTrials){
+  const enc = Object.keys(S.rec).map(Number)
+    .filter(k => S.rec[k] && S.rec[k].a && S.rec[k].p);
+  if(!enc.length) return 0;
+  const maxEnc = Math.max(...enc);
+  const maxStart = Math.max(0, maxEnc - numTrials + 1);
+  return Math.floor(Math.random() * (maxStart + 1));
+}
+
+function setupCheck(){
   inCheck = true;
-  CK = {pos:S.pos, buf:'', done:'', phase:'input',
-    wrongMask:[false,false], reviewImg:0, errEntry:null, retryBuf:'',
-    stageStartTime:null};
   document.querySelector('main').classList.add('hide');
   document.querySelector('.bar').classList.add('hide');
   document.getElementById('ribbon').classList.add('hide');
   document.getElementById('checkWrap').classList.remove('hide');
   document.getElementById('btnCheck').textContent = 'Encode';
-  buildKpad();
-  ckSetPhase('input');
-  ckRenderTrack();
-  ckRenderMeta();
-  CK.stageStartTime = Date.now();
+  document.getElementById('ckSetup').classList.remove('hide');
+  document.getElementById('ckCountdown').classList.add('hide');
+  document.getElementById('ckSession').classList.add('hide');
+  document.getElementById('ckStats').classList.add('hide');
+  document.getElementById('kpad').classList.add('hide');
+  const nt = Math.floor((parseInt(document.getElementById('ckNumDigits').value)||60)/4);
+  document.getElementById('ckStartStage').value = pickRandomStart(nt) + 1;
 }
 
 function exitCheck(){
@@ -878,7 +942,63 @@ function exitCheck(){
   renderStage();
 }
 
-document.getElementById('btnCheck').onclick = () => inCheck ? exitCheck() : enterCheck();
+document.getElementById('btnCheck').onclick = () => inCheck ? exitCheck() : setupCheck();
+document.getElementById('ckNumDigits').addEventListener('change', () => {
+  const nt = Math.floor((parseInt(document.getElementById('ckNumDigits').value)||60)/4);
+  document.getElementById('ckStartStage').value = pickRandomStart(nt) + 1;
+});
+document.getElementById('ckBeginBtn').onclick = () => {
+  const nd = Math.max(4, Math.round((parseInt(document.getElementById('ckNumDigits').value)||60)/4)*4);
+  const nt = nd / 4;
+  const sr = parseInt(document.getElementById('ckStartStage').value);
+  const sp = isNaN(sr) ? 0 : Math.max(0, sr - 1);
+  document.getElementById('ckSetup').classList.add('hide');
+  document.getElementById('ckCountdown').classList.remove('hide');
+  runCountdown(() => {
+    document.getElementById('ckCountdown').classList.add('hide');
+    beginSession(sp, nt);
+  });
+};
+document.getElementById('ckNewSession').onclick = () => {
+  document.getElementById('ckStats').classList.add('hide');
+  setupCheck();
+};
+document.getElementById('ckExitBtn').onclick = exitCheck;
+document.getElementById('ckExportCSV').onclick = exportCSV;
+document.getElementById('btnExportCSV2').onclick = exportCSV;
+
+function runCountdown(callback){
+  const el = document.getElementById('ckCountNum');
+  const steps = ['3','2','1','GO'];
+  let i = 0;
+  const tick = () => {
+    el.textContent = steps[i];
+    el.style.animation = 'none';
+    void el.offsetWidth;
+    el.style.animation = 'ckPop .75s ease-out forwards';
+    i++;
+    if(i < steps.length) setTimeout(tick, 750);
+    else setTimeout(callback, 450);
+  };
+  tick();
+}
+
+function beginSession(startPos, numTrials){
+  CK = {
+    pos:startPos, buf:'', done:'', phase:'input',
+    wrongMask:[false,false], reviewImg:0, errEntry:null, retryBuf:'',
+    sessionId:Date.now().toString(36),
+    trialNum:1, totalTrials:numTrials, trialsCompleted:0,
+    trialStartTs:null, digitTs:[], currentTrial:null
+  };
+  buildKpad();
+  document.getElementById('ckSession').classList.remove('hide');
+  document.getElementById('kpad').classList.remove('hide');
+  ckSetPhase('input');
+  ckRenderTrack();
+  ckRenderMeta();
+  CK.trialStartTs = Date.now();
+}
 
 function buildKpad(){
   const kp = document.getElementById('kpad');
@@ -907,14 +1027,15 @@ function ckRenderTrack(){
   }
   const cur = document.createElement('span');
   cur.className = 'ck-seg cur';
-  cur.textContent = CK.buf.padEnd(4, '·');
+  cur.textContent = (CK.buf||'').padEnd(4, '·');
   track.appendChild(cur);
 }
 
 function ckRenderMeta(){
   const dp = CK.pos * 4 + 1;
-  document.getElementById('ckMeta').textContent = 'd.p. ' + dp + '–' + (dp+3);
-  document.getElementById('stagenum').textContent = dp + '–' + (dp+3);
+  const prog = CK.totalTrials ? ' · '+(CK.trialsCompleted+1)+'/'+CK.totalTrials : '';
+  document.getElementById('ckMeta').textContent = 'd.p. '+dp+'–'+(dp+3)+prog;
+  document.getElementById('stagenum').textContent = dp+'–'+(dp+3);
 }
 
 function ckSetPhase(p){
@@ -927,6 +1048,7 @@ function ckSetPhase(p){
 function ckDigit(d){
   if(CK.phase==='input'){
     if(CK.buf.length>=4) return;
+    CK.digitTs.push(Date.now());
     CK.buf += d;
     ckRenderTrack();
     if(CK.buf.length===4) ckEval();
@@ -941,6 +1063,7 @@ function ckDigit(d){
 function ckBack(){
   if(CK.phase==='input' && CK.buf.length>0){
     CK.buf = CK.buf.slice(0,-1);
+    CK.digitTs.pop();
     ckRenderTrack();
   } else if(CK.phase==='retry' && CK.retryBuf.length>0){
     CK.retryBuf = CK.retryBuf.slice(0,-1);
@@ -949,28 +1072,41 @@ function ckBack(){
 }
 
 function ckEval(){
-  const recallMs = CK.stageStartTime ? Date.now() - CK.stageStartTime : null;
-  CK.stageStartTime = null;
   const expected = quad(CK.pos);
-  if(CK.buf===expected){
-    if(recallMs !== null){
-      S.times = S.times || {};
-      S.times[CK.pos] = recallMs;
-      save();
-    }
-    CK.done += CK.buf;
-    CK.buf = '';
-    CK.pos++;
-    CK.stageStartTime = Date.now();
-    ckRenderTrack();
-    ckRenderMeta();
+  const isCorrect = CK.buf === expected;
+  CK.currentTrial = {
+    session:CK.sessionId, trial:CK.trialNum, pos:CK.pos,
+    startTs:CK.trialStartTs, digitTs:[...CK.digitTs],
+    typed:CK.buf, correct:isCorrect,
+    img1type:null, img1confused:null,
+    img2type:null, img2confused:null
+  };
+  if(isCorrect){
+    commitTrial();
+    CK.done += CK.buf; CK.buf = ''; CK.pos++;
+    if(CK.trialsCompleted >= CK.totalTrials){ ckShowStats(); return; }
+    CK.trialNum++; CK.trialStartTs = Date.now(); CK.digitTs = [];
+    ckRenderTrack(); ckRenderMeta();
   } else {
     const w0 = CK.buf.slice(0,2) !== expected.slice(0,2);
     const w1 = CK.buf.slice(2,4) !== expected.slice(2,4);
-    CK.wrongMask = [w0, w1];
-    CK.errEntry = {pos:CK.pos, ts:Date.now(), recallMs, typed:CK.buf, images:[{},{}]};
+    CK.wrongMask = [w0,w1];
+    CK.errEntry = {pos:CK.pos, ts:Date.now(), typed:CK.buf, images:[{},{}]};
     ckShowReview();
   }
+}
+
+function commitTrial(){
+  const t = CK.currentTrial;
+  if(CK.errEntry && CK.errEntry.images){
+    t.img1type     = CK.errEntry.images[0]?.type     || null;
+    t.img1confused = CK.errEntry.images[0]?.confused  || null;
+    t.img2type     = CK.errEntry.images[1]?.type     || null;
+    t.img2confused = CK.errEntry.images[1]?.confused  || null;
+  }
+  S.trials.push(t);
+  save();
+  CK.trialsCompleted++;
 }
 
 function sceneHTML(rec){
@@ -1085,23 +1221,15 @@ async function ckClassify(imgIdx, type){
 
 function ckAfterClassify(imgIdx){
   const [w0,w1] = CK.wrongMask;
-  // stopping rule: both wrong, classified image 0 as Missed Location → skip image 1
   if(w0 && w1 && imgIdx===0 && CK.errEntry.images[0].type==='Missed Location'){
-    ckCommitError(); ckStartRetry(); return;
+    commitTrial(); ckStartRetry(); return;
   }
-  // both wrong, just classified image 0 (not Missed Location) → ask image 1
   if(w0 && w1 && imgIdx===0){
     document.getElementById('ckMixup').classList.add('hide');
     document.getElementById('ckClassifySection').classList.remove('hide');
     ckShowClassify(1); return;
   }
-  ckCommitError(); ckStartRetry();
-}
-
-function ckCommitError(){
-  S.errors = S.errors || [];
-  S.errors.push(CK.errEntry);
-  save();
+  commitTrial(); ckStartRetry();
 }
 
 function ckStartRetry(){
@@ -1119,13 +1247,67 @@ function ckCheckRetry(){
   const expected = quad(CK.pos);
   if(CK.retryBuf===expected){
     CK.done += expected; CK.buf = ''; CK.pos++;
-    CK.stageStartTime = Date.now();
-    ckSetPhase('input'); ckRenderTrack(); ckRenderMeta();
+    ckSetPhase('input');
+    if(CK.trialsCompleted >= CK.totalTrials){ ckShowStats(); return; }
+    CK.trialNum++; CK.trialStartTs = Date.now(); CK.digitTs = [];
+    ckRenderTrack(); ckRenderMeta();
   } else {
     CK.retryBuf = '';
     ckRenderRetry();
     toast('Not quite — try again');
   }
+}
+
+function ckShowStats(){
+  document.getElementById('ckSession').classList.add('hide');
+  document.getElementById('kpad').classList.add('hide');
+  document.getElementById('ckStats').classList.remove('hide');
+  const sess = (S.trials||[]).filter(t => t.session === CK.sessionId);
+  const total = sess.length;
+  const correct = sess.filter(t => t.correct).length;
+  const acc = total ? Math.round(correct/total*100) : 0;
+  const times = sess
+    .filter(t => t.digitTs && t.digitTs.length===4)
+    .map(t => t.digitTs[3] - t.startTs)
+    .sort((a,b)=>a-b);
+  const median = times.length ? times[Math.floor(times.length/2)] : null;
+  const errTypes = {};
+  sess.filter(t=>!t.correct).forEach(t=>{
+    [t.img1type,t.img2type].filter(Boolean).forEach(tp=>{ errTypes[tp]=(errTypes[tp]||0)+1; });
+  });
+  let html = `
+    <div class="ck-stat-row"><span>Accuracy</span><span class="ck-stat-val">${acc}%</span></div>
+    <div class="ck-stat-row"><span>Correct</span><span class="ck-stat-val">${correct} / ${total}</span></div>`;
+  if(median!==null)
+    html += `<div class="ck-stat-row"><span>Median recall</span><span class="ck-stat-val">${(median/1000).toFixed(1)}s</span></div>`;
+  if(Object.keys(errTypes).length){
+    html += '<div class="ck-stat-section">Error types</div>';
+    for(const [tp,cnt] of Object.entries(errTypes))
+      html += `<div class="ck-stat-row"><span>${tp}</span><span class="ck-stat-val">${cnt}</span></div>`;
+  }
+  document.getElementById('ckStatsBody').innerHTML = html;
+}
+
+function exportCSV(){
+  const cols = ['session','trial','pos','start_ts','d1_ts','d2_ts','d3_ts','d4_ts','typed','correct','img1_type','img1_confused','img2_type','img2_confused'];
+  const csvEsc = v => {
+    if(v==null||v==='') return '';
+    const s = String(v);
+    return (s.includes(',')||s.includes('"')||s.includes('\n')) ? '"'+s.replace(/"/g,'""')+'"' : s;
+  };
+  const rows = (S.trials||[]).map(t=>[
+    t.session, t.trial, t.pos, t.startTs,
+    t.digitTs?.[0]??'', t.digitTs?.[1]??'', t.digitTs?.[2]??'', t.digitTs?.[3]??'',
+    t.typed, t.correct?1:0,
+    t.img1type??'', t.img1confused??'',
+    t.img2type??'', t.img2confused??''
+  ]);
+  const csv = [cols,...rows].map(r=>r.map(csvEsc).join(',')).join('\n');
+  const blob = new Blob([csv],{type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'pi-trials-'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click(); URL.revokeObjectURL(a.href);
 }
 
 (function keyTable(){
