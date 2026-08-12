@@ -218,8 +218,12 @@ main{padding:0 14px 220px}
 .kbtn{background:var(--panel);border:1px solid var(--line);border-radius:8px;
   font-family:var(--mono);font-size:24px;font-weight:500;color:var(--bone);
   height:68px;display:flex;align-items:center;justify-content:center;
-  transition:background .1s,border-color .1s;-webkit-tap-highlight-color:transparent}
+  transition:background .1s,border-color .1s;-webkit-tap-highlight-color:transparent;
+  touch-action:manipulation}
 .kbtn:active{background:var(--panel2);border-color:var(--dim)}
+.kbtn.tapped{background:var(--gold) !important;color:var(--ink) !important;
+  border-color:var(--gold) !important;transition:none}
+.kbtn-back{font-size:18px;color:var(--dim)}
 @media(hover:hover){.kbtn:hover{background:var(--panel2);border-color:var(--dim)}}
 .ck-review{padding-top:8px}
 .ck-scene{font-family:var(--disp);font-size:18px;line-height:1.55;
@@ -1029,13 +1033,16 @@ function beginSession(startPos, numTrials){
 function buildKpad(){
   const kp = document.getElementById('kpad');
   kp.innerHTML = '';
-  // 1–9 then blank / 0 / blank (0 centred on last row)
-  [1,2,3,4,5,6,7,8,9,null,0,null].forEach(v => {
+  [1,2,3,4,5,6,7,8,9,null,0,'⌫'].forEach(v => {
     if(v === null){ kp.appendChild(document.createElement('div')); return; }
     const b = document.createElement('button');
-    b.className = 'kbtn';
-    b.textContent = v;
-    b.onclick = () => { ckDigit(String(v)); b.blur(); };
+    b.className = v === '⌫' ? 'kbtn kbtn-back' : 'kbtn';
+    b.textContent = String(v);
+    b.onclick = () => { v === '⌫' ? ckBack() : ckDigit(String(v)); b.blur(); };
+    b.addEventListener('touchstart', () => {
+      b.classList.add('tapped');
+      setTimeout(() => b.classList.remove('tapped'), 150);
+    }, {passive: true});
     kp.appendChild(b);
   });
 }
